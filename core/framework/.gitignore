@@ -1,0 +1,68 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Cache
+/cache/
+/tmp/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+/build/
+/dist/
+
+# Testing
+/coverage/
+.phpunit.result.cache
+
+# Composer
+composer.lock
+
+# Development files and scripts
+Claude.md
+CLAUDE.md
+MANUAL-EXECUTION-GUIDE.md
+/tests/
+/scripts/
+*.sh
+*.xlsx
+~*.xlsx
+
+# Documentation and analysis files
+/docs/
+/old-documentation/
+*.md:Zone.Identifier
+*:Zone.Identifier
+
+# Development packages and rust (keep local only)
+/packages/
+/rust/
+
+# Keep only essential framework files
+# Templates are kept for now but can be moved to separate repos later
+
+# Package-specific
+/packages/*/vendor/
+/templates/*/vendor/
+
+# Windows Zone.Identifier files
+*:Zone.Identifier
+*.Zone.Identifier

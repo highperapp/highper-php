@@ -1,0 +1,185 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// HighPer Framework CLI
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use EaseAppPHP\HighPer\Foundation\Application;
+use EaseAppPHP\HighPer\Contracts\ServerInterface;
+
+function showHelp(): void
+{
+    echo <<<'HELP'
+HighPer Framework v2 CLI
+
+Usage:
+  php bin/highper [command] [options]
+
+Commands:
+  serve     Start the HighPer server
+  status    Show server status
+  stop      Stop the running server
+  help      Show this help message
+
+Options for serve:
+  --host=HOST       Server host (default: 0.0.0.0)
+  --port=PORT       Server port (default: 8080)
+  --env=ENV         Environment (default: development)
+  --protocols=LIST  Comma-separated protocols (default: http)
+
+Examples:
+  php bin/highper serve
+  php bin/highper serve --host=127.0.0.1 --port=3000
+  php bin/highper serve --protocols=http,websocket --env=production
+  php bin/highper status
+
+HELP;
+}
+
+function parseArgs(array $args): array
+{
+    $parsed = ['command' => 'help', 'options' => []];
+    
+    if (isset($args[1])) {
+        $parsed['command'] = $args[1];
+    }
+    
+    for ($i = 2; $i < count($args); $i++) {
+        if (strpos($args[$i], '--') === 0) {
+            $option = substr($args[$i], 2);
+            if (strpos($option, '=') !== false) {
+                [$key, $value] = explode('=', $option, 2);
+                $parsed['options'][$key] = $value;
+            } else {
+                $parsed['options'][$option] = true;
+            }
+        }
+    }
+    
+    return $parsed;
+}
+
+function executeServe(array $options): void
+{
+    echo "🚀 Starting HighPer Framework Server...\n";
+    
+    // Configuration from options
+    $config = [
+        'server' => [
+            'host' => $options['host'] ?? '0.0.0.0',
+            'port' => (int) ($options['port'] ?? 8080),
+            'protocols' => isset($options['protocols']) 
+                ? explode(',', $options['protocols']) 
+                : ['http'],
+            'mode' => 'single_port_multiplexing'
+        ],
+        'app' => [
+            'env' => $options['env'] ?? 'development'
+        ]
+    ];
+    
+    // Create and bootstrap application
+    $app = new Application($config);
+    $app->bootstrap();
+    
+    // Get server and add some demo routes
+    $server = $app->getContainer()->get(ServerInterface::class);
+    $router = $app->getRouter();
+    
+    // Add demo routes
+    $router->addRoute('GET', '/', function() {
+        return [
+            'message' => 'Welcome to HighPer Framework v2!',
+            'timestamp' => date('c'),
+            'framework' => 'HighPer',
+            'version' => '2.0.0'
+        ];
+    });
+    
+    $router->addRoute('GET', '/health', function() use ($app, $server) {
+        return [
+            'status' => 'healthy',
+            'uptime' => time() - ($_SERVER['REQUEST_TIME'] ?? time()),
+            'memory' => [
+                'current' => memory_get_usage(true),
+                'peak' => memory_get_peak_usage(true)
+            ],
+            'server' => $server->getStats()
+        ];
+    });
+    
+    $router->addRoute('GET', '/stats', function() use ($app) {
+        return $app->getStats();
+    });
+    
+    // Start server
+    $host = $config['server']['host'];
+    $port = $config['server']['port'];
+    $protocols = implode(', ', $config['server']['protocols']);
+    
+    echo "✅ Server configuration:\n";
+    echo "   Host: {$host}\n";
+    echo "   Port: {$port}\n";
+    echo "   Protocols: {$protocols}\n";
+    echo "   Environment: {$config['app']['env']}\n";
+    echo "\n";
+    echo "📍 Available endpoints:\n";
+    echo "   GET  http://{$host}:{$port}/       - Welcome message\n";
+    echo "   GET  http://{$host}:{$port}/health - Quick health check\n";
+    echo "   GET  http://{$host}:{$port}/health/detailed - Detailed health check\n";
+    echo "   GET  http://{$host}:{$port}/health/readiness - Readiness probe\n";
+    echo "   GET  http://{$host}:{$port}/health/liveness - Liveness probe\n";
+    echo "   GET  http://{$host}:{$port}/metrics - Performance metrics\n";
+    echo "   GET  http://{$host}:{$port}/metrics/prometheus - Prometheus format\n";
+    echo "   GET  http://{$host}:{$port}/server/stats - Server statistics\n";
+    echo "   GET  http://{$host}:{$port}/stats  - Application stats\n";
+    echo "\n";
+    echo "🎯 Server starting... Press Ctrl+C to stop\n";
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    
+    try {
+        $server->start();
+        $app->run();
+    } catch (\Throwable $e) {
+        echo "\n❌ Server error: " . $e->getMessage() . "\n";
+        exit(1);
+    }
+}
+
+function executeStatus(): void
+{
+    echo "📊 HighPer Framework Server Status\n";
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
+    
+    // For now, just show that the framework is available
+    echo "✅ HighPer Framework v2 is ready\n";
+    echo "🔧 Available packages: " . (count(glob(__DIR__ . '/../packages/*')) ?: '0') . "\n";
+    echo "📦 Rust FFI libraries: " . (extension_loaded('ffi') ? 'Available' : 'Not available') . "\n";
+    echo "⚡ AMPHP support: " . (class_exists('\\Revolt\\EventLoop') ? 'Available' : 'Not available') . "\n";
+    echo "\nTo start the server: php bin/highper serve\n";
+}
+
+// Main execution
+$args = parseArgs($argv);
+
+switch ($args['command']) {
+    case 'serve':
+        executeServe($args['options']);
+        break;
+        
+    case 'status':
+        executeStatus();
+        break;
+        
+    case 'stop':
+        echo "🛑 Stop command not yet implemented\n";
+        echo "   Use Ctrl+C to stop the server for now\n";
+        break;
+        
+    case 'help':
+    default:
+        showHelp();
+        break;
+}

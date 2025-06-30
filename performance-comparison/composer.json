@@ -1,0 +1,9 @@
+{
+    "name": "performance/comparison",
+    "require": {
+        "workerman/workerman": "^5.1",
+        "amphp/http-server": "^3.4",
+        "amphp/amp": "^3.1",
+        "revolt/event-loop": "^1.0"
+    }
+}

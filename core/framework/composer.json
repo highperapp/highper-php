@@ -1,0 +1,142 @@
+{
+    "name": "highperapp/highper-php",
+    "description": "High-performance asynchronous PHP micro framework targeting C10M concurrency with maximum simplicity and peak performance",
+    "type": "framework",
+    "license": "MIT",
+    "keywords": [
+        "framework",
+        "async",
+        "high-performance",
+        "c10m",
+        "microframework",
+        "amphp",
+        "revolt",
+        "non-blocking",
+        "concurrent"
+    ],
+    "homepage": "https://github.com/highperapp/highper-php",
+    "authors": [
+        {
+            "name": "HighPerApp Team",
+            "email": "raghuveer.dendukuri@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3|^8.4",
+        "revolt/event-loop": "^1.0",
+        "amphp/amp": "^3.0",
+        "amphp/http-server": "^3.0",
+        "amphp/parallel": "^2.0",
+        "vlucas/phpdotenv": "^5.0",
+        "filp/whoops": "^2.0",
+        "psr/container": "^2.0",
+        "psr/log": "^3.0",
+        "highperapp/container": "dev-main",
+        "highperapp/router": "dev-main",
+        "highperapp/security": "dev-main",
+        "highperapp/database": "dev-main",
+        "highperapp/crypto": "dev-main",
+        "highperapp/zero-downtime": "dev-main",
+        "highperapp/websockets": "dev-main",
+        "highperapp/realtime": "dev-main"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.7",
+        "symfony/var-dumper": "^6.0"
+    },
+    "suggest": {
+        "highperapp/cache": "High-performance caching with Redis/Memcached",
+        "highperapp/database": "Async database adapters for MySQL/PostgreSQL",
+        "highperapp/websockets": "WebSocket streaming with backpressure",
+        "highperapp/grpc": "gRPC server integration",
+        "highperapp/monitoring": "Performance monitoring and metrics",
+        "highperapp/security": "Security enhancements and validation",
+        "highperapp/crypto": "High-performance cryptographic operations",
+        "highperapp/paseto": "PASETO token authentication",
+        "highperapp/validator": "High-speed data validation",
+        "highperapp/realtime": "Real-time communication protocols"
+    },
+    "autoload": {
+        "psr-4": {
+            "HighPerApp\\HighPer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HighPerApp\\HighPer\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0-dev"
+        },
+        "highper": {
+            "providers": [
+                "HighPerApp\\HighPer\\ServiceProvider\\CoreServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.3.0"
+        }
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../libraries/di-container"
+        },
+        {
+            "type": "path", 
+            "url": "../../libraries/router"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/security"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/database"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/crypto"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/zero-downtime"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/websockets"
+        },
+        {
+            "type": "path",
+            "url": "../../libraries/realtime"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "stan": "phpstan analyse --memory-limit=1G",
+        "cs:check": "phpcs",
+        "cs:fix": "phpcbf",
+        "quality": [
+            "@stan",
+            "@cs:check",
+            "@test"
+        ],
+        "post-install-cmd": [
+            "@php scripts/optimize-performance.php"
+        ],
+        "post-update-cmd": [
+            "@php scripts/optimize-performance.php"
+        ]
+    }
+}
