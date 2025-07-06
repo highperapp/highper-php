@@ -1,0 +1,117 @@
+{
+    "name": "highperapp/highper-php",
+    "description": "High-performance asynchronous PHP micro framework targeting C10M concurrency with maximum simplicity and peak performance",
+    "type": "framework",
+    "license": "MIT",
+    "keywords": [
+        "framework",
+        "async",
+        "high-performance",
+        "c10m",
+        "microframework",
+        "amphp",
+        "revolt",
+        "non-blocking",
+        "concurrent"
+    ],
+    "homepage": "https://github.com/highperapp/highper-php",
+    "authors": [
+        {
+            "name": "Raghuveer",
+            "email": "raghuveer.dendukuri@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^8.3|^8.4",
+        "revolt/event-loop": "^1.0",
+        "amphp/amp": "^3.0",
+        "amphp/http-server": "^3.0",
+        "amphp/parallel": "^2.0",
+        "vlucas/phpdotenv": "^5.0",
+        "filp/whoops": "^2.0",
+        "psr/container": "^2.0",
+        "psr/log": "^3.0",
+        "highperapp/container": "^1.0",
+        "highperapp/router": "^1.0",
+        "highperapp/zero-downtime": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.7",
+        "symfony/var-dumper": "^6.0"
+    },
+    "suggest": {
+        "highperapp/cache": "High-performance caching with Redis/Memcached",
+        "highperapp/database": "Async database adapters for MySQL/PostgreSQL",
+        "highperapp/websockets": "WebSocket streaming with backpressure",
+        "highperapp/grpc": "gRPC server integration",
+        "highperapp/monitoring": "Performance monitoring and metrics",
+        "highperapp/security": "Security enhancements and validation",
+        "highperapp/crypto": "High-performance cryptographic operations",
+        "highperapp/paseto": "PASETO token authentication",
+        "highperapp/validator": "High-speed data validation",
+        "highperapp/realtime": "Real-time communication protocols"
+    },
+    "autoload": {
+        "psr-4": {
+            "HighPerApp\\HighPer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HighPerApp\\HighPer\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.0-dev"
+        },
+        "highper": {
+            "providers": [
+                "HighPerApp\\HighPer\\ServiceProvider\\CoreServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "platform": {
+            "php": "8.3.0"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit tests/Unit/",
+        "test:integration": "phpunit tests/Integration/",
+        "test:performance": "phpunit tests/Performance/",
+        "test:coverage": "phpunit --coverage-html coverage",
+        "stan": "phpstan analyse --memory-limit=1G",
+        "cs:check": "phpcs",
+        "cs:fix": "phpcbf",
+        "quality": [
+            "@stan",
+            "@cs:check",
+            "@test"
+        ],
+        "performance:baseline": "./scripts/unified-performance-test.sh --baseline-only",
+        "performance:wrk2": "./scripts/unified-performance-test.sh --wrk2-precision",
+        "performance:extreme": "./scripts/unified-performance-test.sh --extreme-concurrency",
+        "performance:c10m": "./scripts/unified-performance-test.sh --validate-c10m",
+        "performance:full": "./scripts/unified-performance-test.sh --full-suite",
+        "test:all": [
+            "@test:unit",
+            "@test:integration", 
+            "@test:performance",
+            "@performance:baseline"
+        ],
+        "post-install-cmd": [
+            "@php scripts/optimize-performance.php"
+        ],
+        "post-update-cmd": [
+            "@php scripts/optimize-performance.php"
+        ]
+    }
+}

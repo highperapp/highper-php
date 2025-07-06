@@ -1,0 +1,52 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Cache
+/cache/
+/tmp/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build artifacts
+/build/
+/dist/
+
+# Testing
+/coverage/
+.phpunit.result.cache
+
+# Composer
+composer.lock
+
+# Documentation and analysis files
+*.md:Zone.Identifier
+*:Zone.Identifier
+
+# Development packages and rust (keep local only)
+/packages/
+
+# Package-specific
+/packages/*/vendor/
+/templates/*/vendor/
+
+# Windows Zone.Identifier files
+*:Zone.Identifier
+*.Zone.Identifier
