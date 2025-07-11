@@ -1,4 +1,4 @@
-# HighPer Framework v1
+# HighPer Framework
 
 [![PHP Version](https://img.shields.io/badge/PHP-8.3%2B-blue.svg)](https://php.net)
 [![Performance](https://img.shields.io/badge/Performance-62.3K%20RPS-green.svg)](https://github.com/highperapp/highper-php)
@@ -6,7 +6,7 @@
 [![Reliability](https://img.shields.io/badge/Reliability-99.999%25-brightgreen.svg)](https://github.com/highperapp/highper-php)
 [![Tests](https://img.shields.io/badge/Tests-96.2%25-success.svg)](https://github.com/highperapp/highper-php)
 
-**The fastest, most reliable PHP framework for C10M applications with five nines reliability (99.999% uptime).**
+**The micro PHP framework that is optimized for extreme concurrency and performance.**
 
 ## 🚀 **Performance Achievements**
 
@@ -57,7 +57,7 @@ HighPer Framework supports 18+ standalone packages that can be used independentl
 **Foundation Packages (Required)**:
 - `highperapp/container`: PSR-11 container optimized for C10M
 - `highperapp/router`: Ultra-fast router with O(1) lookups + Rust FFI
-- `highperapp/zero-downtime`: Zero-downtime deployment system
+
 
 **Optional Standalone Libraries**:
 - `highperapp/cache`: Multi-driver async caching with Redis/Memcached
@@ -75,7 +75,7 @@ HighPer Framework supports 18+ standalone packages that can be used independentl
 - `highperapp/tracing`: Distributed tracing and observability
 - `highperapp/validator`: Data validation with Rust FFI
 - `highperapp/websockets`: WebSocket streaming with backpressure
-
+- `highperapp/zero-downtime`: Zero-downtime deployment system
 
 ## 🦀 Rust FFI Integration
 
