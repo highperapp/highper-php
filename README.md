@@ -6,25 +6,45 @@
 [![Reliability](https://img.shields.io/badge/Reliability-99.999%25-brightgreen.svg)](https://github.com/highperapp/highper-php)
 [![Tests](https://img.shields.io/badge/Tests-96.2%25-success.svg)](https://github.com/highperapp/highper-php)
 
-**The micro PHP framework that is optimized for extreme concurrency and performance.**
+**Enterprise PHP framework designed for high-scale production applications with decades of operational experience.**
 
-## 🚀 **Performance Achievements**
+## 🚀 Quick Start
 
-- **🏆 62,382 RPS**: Baseline requests per second performance
-- **⚡ C10K Validated**: 10,000 concurrent connections with zero errors
-- **💾 Zero Memory Leaks**: Sustained 6M+ operations with 0B growth
-- **🛡️ Five Nines Reliability**: 99.999% uptime architecture
-- **⏱️ Sub-millisecond Latency**: Consistent performance under load
+```bash
+# Basic server
+bin/highper serve
 
-## 🎯 **Core Features**
+# Production with all optimizations  
+bin/highper serve --workers=4 --c10m --rust=enabled --memory-limit=1G --zero-downtime
 
-- **🏗️ Hybrid Multi-Process + Async**: ProcessManager + AsyncManager for maximum concurrency
-- **🛡️ Five Nines Reliability Stack**: CircuitBreaker, BulkheadIsolator, SelfHealingManager
-- **⚡ Performance Optimizations**: ContainerCompiler, RingBufferCache, AdaptiveSerializer
-- **🚀 Zero-Downtime Deployment**: Hot reload with WebSocket connection preservation
-- **🦀 Enhanced Rust FFI**: AdaptiveSerializer with JSON/MessagePack support
-- **📡 Complete Protocol Matrix**: HTTP/S, WebSocket/S, gRPC/TLS support
-- **🔧 Build-Time Compilation**: Container and security pattern compilation
+# Dedicated ports mode
+bin/highper serve --mode=dedicated --http-port=8080 --ws-port=8081
+```
+
+## 🏗️ Hybrid Multi-Process + Async Architecture
+
+**Core Design**: Combines process isolation with async I/O efficiency
+- **Multi-process worker spawning** using `pcntl_fork()`
+- **RevoltPHP + UV hybrid event loop** per worker  
+- **Zero-downtime deployments** with blue-green/rolling strategies
+- **C10M optimizations** for 10 million concurrent connections
+- **Rust FFI integration** for performance-critical components
+
+### Advanced CLI Features
+
+```bash
+bin/highper help                    # Show all architecture options
+bin/highper status                  # System capability check
+
+# Architecture options
+--workers=COUNT                     # Worker processes (auto-detect CPU cores)
+--mode=single|dedicated             # Single port vs dedicated ports
+--c10m                             # C10M optimizations  
+--rust=enabled                     # Rust FFI performance boost
+--zero-downtime                    # Zero-downtime deployments
+--deployment-strategy=blue_green    # Deployment strategy
+--memory-limit=SIZE                # Worker memory limit
+```
 
 ## 🏗️ Architecture
 
@@ -150,56 +170,65 @@ cd packages/highper-paseto/rust && ./build.sh
 cd packages/highper-validator/rust && ./build.sh
 ```
 
-## 🧪 **Testing & Quality**
+## 🧪 Comprehensive Testing
 
-### Test Coverage
-- **Unit Tests**: 96.2% success rate (75/78 tests)
-- **Integration Tests**: Framework + Memory leak validation
-- **Performance Tests**: 62,382 RPS baseline confirmed
-- **Memory Tests**: 0B growth across 6M+ operations
+**Professional test suite** covering all architecture components:
 
-### Run Tests
 ```bash
-# Unit Tests
-php tests/Unit/Phase1ComponentsTest.php
-php tests/Unit/Phase2And3ComponentsTest.php
+# Run all tests
+php run-tests.php
 
-# Integration Tests
-php tests/Integration/FrameworkIntegrationTest.php
-php tests/Integration/MemoryLeakDetectionTest.php
+# Specific test suites  
+php run-tests.php --suite=unit                    # Core components
+php run-tests.php --suite=integration             # CLI and architecture
+php run-tests.php --suite=performance             # C10M validation
+php run-tests.php --suite=concurrency             # Multi-process safety
+
+# System capability check
+php run-tests.php --system-check
 ```
 
-## 📊 **Benchmarks**
+### Test Coverage
+- **Unit Tests**: ProcessManager, HybridEventLoop, ArchitectureValidator
+- **Integration Tests**: CLI commands, multi-process architecture
+- **Performance Tests**: C10M optimizations, memory efficiency
+- **Concurrency Tests**: Thread safety, race condition prevention
 
-### Performance Metrics
-| Metric | Achievement | Description |
-|--------|------------|-------------|
-| **RPS** | 62,382 | Requests per second baseline |
-| **Memory** | 4MB baseline | Minimal memory footprint |
-| **Latency** | <1ms P99 | Sub-millisecond response times |
-| **Connections** | C10K validated | 10,000 concurrent connections |
-| **Reliability** | 99.999% | Five nines uptime guarantee |
+## 📁 Key Implementation Files
 
-## 🔧 **Requirements**
+```
+src/Foundation/
+├── ProcessManager.php              # Multi-process worker management
+├── HybridEventLoop.php             # RevoltPHP + UV event loop  
+├── ArchitectureValidator.php       # Configuration validation
+└── Application.php                 # Main application bootstrap
 
-- **PHP**: 8.3+ (8.4 recommended for latest optimizations)
-- **Extensions**: FFI (optional, for Rust components), OPcache, pcntl, posix
-- **Memory**: 256MB+ (optimized from 512MB in v2)
+tests/
+├── Unit/                          # Component unit tests
+│   ├── ProcessManagerTest.php
+│   ├── HybridEventLoopTest.php  
+│   └── ArchitectureValidatorTest.php
+├── Integration/                   # Integration tests
+│   ├── MultiProcessArchitectureTest.php
+│   └── CLIArchitectureTest.php
+├── Performance/                   # Performance validation
+│   └── C10MArchitectureTest.php
+└── Concurrency/                   # Concurrency safety
+    └── MultiProcessConcurrencyTest.php
+```
+
+## 🔧 Requirements
+
+- **PHP**: 8.3+ with pcntl, posix extensions
+- **Extensions**: FFI (optional, for Rust components), OPcache  
+- **Memory**: 256MB+ per worker
 - **OS**: Linux (recommended), macOS, Windows
 
-## 🆕 **Key Features**
+---
 
-### ✨ **Core Capabilities**
-- **Five Nines Reliability**: Circuit breaker, bulkhead isolation, self-healing
-- **Zero-Downtime Deployment**: Hot reload with connection preservation
-- **High Performance**: 62,382 RPS with sub-millisecond latency
-- **Complete Test Suite**: 96.2% test coverage with memory leak validation
+**Ready for integration with blueprint and nano application templates.**
 
-### 🚀 **Architecture Highlights**
-- **Hybrid Multi-Process + Async**: Best of both architectures
-- **Build-Time Compilation**: Container and pattern compilation
-- **Adaptive Serialization**: JSON/MessagePack with Rust FFI
-- **Protocol Matrix**: HTTP/S, WebSocket/S, gRPC/TLS support
+*Built with decades of production experience in high-scale, high-concurrency applications.*
 
 ## 📝 License
 

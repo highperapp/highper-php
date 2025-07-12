@@ -36,14 +36,13 @@ Thumbs.db
 # Composer
 composer.lock
 
-
-
 # Documentation and analysis files
 *.md:Zone.Identifier
 *:Zone.Identifier
 
 # Development packages and rust (keep local only)
 /packages/
+/rust/
 
 # Keep only essential framework files
 # Templates are kept for now but can be moved to separate repos later

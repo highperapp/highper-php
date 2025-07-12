@@ -1,7 +1,7 @@
 {
     "name": "highperapp/highper-php",
     "description": "High-performance asynchronous PHP micro framework targeting C10M concurrency with maximum simplicity and peak performance",
-    "type": "framework",
+    "type": "library",
     "license": "MIT",
     "keywords": [
         "framework",

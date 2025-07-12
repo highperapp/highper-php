@@ -53,7 +53,7 @@ class AMPHTTPServerManager implements HTTPServerManagerInterface
                 $this->processProxyHeaders($request);
             }
             
-            return new Response(200, [], 'HighPer v3 Server Running');
+            return new Response(200, [], 'HighPer Server Running');
         });
 
         $this->server = new HttpServer($sockets, $requestHandler, $this->logger);

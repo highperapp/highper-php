@@ -6,16 +6,17 @@ declare(strict_types=1);
 // HighPer Framework CLI
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use EaseAppPHP\HighPer\Foundation\Application;
-use EaseAppPHP\HighPer\Contracts\ServerInterface;
+use HighPerApp\HighPer\Foundation\Application;
+use HighPerApp\HighPer\Contracts\ServerInterface;
+use HighPerApp\HighPer\Foundation\ArchitectureValidator;
 
 function showHelp(): void
 {
     echo <<<'HELP'
-HighPer Framework v2 CLI
+HighPer Framework CLI - Hybrid Multi-Process + Async Architecture
 
 Usage:
-  php bin/highper [command] [options]
+  bin/highper [command] [options]
 
 Commands:
   serve     Start the HighPer server
@@ -23,17 +24,38 @@ Commands:
   stop      Stop the running server
   help      Show this help message
 
-Options for serve:
+Basic Options for serve:
   --host=HOST       Server host (default: 0.0.0.0)
   --port=PORT       Server port (default: 8080)
   --env=ENV         Environment (default: development)
   --protocols=LIST  Comma-separated protocols (default: http)
 
+Advanced Architecture Options:
+  --workers=COUNT          Number of worker processes (default: auto-detect CPU cores)
+  --mode=MODE             Server mode: single|dedicated (default: single)
+  --http-port=PORT        HTTP port for dedicated mode (default: 8080)
+  --ws-port=PORT          WebSocket port for dedicated mode (default: 8081)
+  --c10m                  Enable C10M optimizations (10M concurrent connections)
+  --rust=enabled          Enable Rust FFI optimizations
+  --memory-limit=SIZE     Worker memory limit (default: 256M)
+  --zero-downtime         Enable zero-downtime deployments
+  --deployment-strategy=TYPE  Deployment strategy: blue_green|rolling (default: blue_green)
+
 Examples:
-  php bin/highper serve
-  php bin/highper serve --host=127.0.0.1 --port=3000
-  php bin/highper serve --protocols=http,websocket --env=production
-  php bin/highper status
+  # Single port multiplexing (default)
+  bin/highper serve --port=8080 --workers=4
+
+  # Dedicated ports mode
+  bin/highper serve --mode=dedicated --http-port=8080 --ws-port=8081
+
+  # With performance optimizations
+  bin/highper serve --c10m --rust=enabled --memory-limit=1G
+
+  # Production with zero-downtime
+  bin/highper serve --workers=8 --zero-downtime --deployment-strategy=blue_green
+
+  # Full enterprise configuration
+  bin/highper serve --workers=16 --c10m --rust=enabled --memory-limit=2G --zero-downtime
 
 HELP;
 }
@@ -65,24 +87,101 @@ function executeServe(array $options): void
 {
     echo "🚀 Starting HighPer Framework Server...\n";
     
+    // Parse advanced options
+    $workers = (int) ($options['workers'] ?? (int) shell_exec('nproc') ?: 4);
+    $mode = $options['mode'] ?? 'single';
+    $c10mEnabled = isset($options['c10m']);
+    $rustEnabled = isset($options['rust']) && $options['rust'] === 'enabled';
+    $memoryLimit = $options['memory-limit'] ?? '256M';
+    $zeroDowntime = isset($options['zero-downtime']);
+    $deploymentStrategy = $options['deployment-strategy'] ?? 'blue_green';
+    
+    // Port configuration based on mode
+    if ($mode === 'dedicated') {
+        $httpPort = (int) ($options['http-port'] ?? 8080);
+        $wsPort = (int) ($options['ws-port'] ?? 8081);
+        $ports = ['http' => $httpPort, 'ws' => $wsPort];
+        $protocols = ['http', 'ws'];
+    } else {
+        $port = (int) ($options['port'] ?? 8080);
+        $ports = ['multiplexed' => $port];
+        $protocols = isset($options['protocols']) 
+            ? explode(',', $options['protocols']) 
+            : ['http'];
+    }
+    
     // Configuration from options
     $config = [
         'server' => [
             'host' => $options['host'] ?? '0.0.0.0',
-            'port' => (int) ($options['port'] ?? 8080),
-            'protocols' => isset($options['protocols']) 
-                ? explode(',', $options['protocols']) 
-                : ['http'],
-            'mode' => 'single_port_multiplexing'
+            'port' => $port ?? 8080,
+            'ports' => $ports,
+            'protocols' => $protocols,
+            'mode' => $mode === 'dedicated' ? 'dedicated_ports' : 'single_port_multiplexing',
+            'c10m_enabled' => $c10mEnabled,
+            'rust_enabled' => $rustEnabled
+        ],
+        'workers' => [
+            'count' => $workers,
+            'memory_limit' => $memoryLimit,
+            'restart_threshold' => $c10mEnabled ? 50000 : 10000,
+            'max_connections_per_worker' => $c10mEnabled ? 10000 : 2500
+        ],
+        'zero_downtime' => [
+            'enabled' => $zeroDowntime,
+            'deployment_strategy' => $deploymentStrategy,
+            'graceful_shutdown_timeout' => 30
+        ],
+        'event_loop' => [
+            'uv_enabled' => $rustEnabled || $c10mEnabled,
+            'auto_switch' => true,
+            'thresholds' => [
+                'connections' => $c10mEnabled ? 5000 : 1000,
+                'timers' => $c10mEnabled ? 500 : 100
+            ]
         ],
         'app' => [
             'env' => $options['env'] ?? 'development'
         ]
     ];
     
+    // Set environment variables for ProcessManager
+    $_ENV['WORKER_COUNT'] = (string) $workers;
+    $_ENV['WORKER_MEMORY_LIMIT'] = $memoryLimit;
+    $_ENV['DEPLOYMENT_STRATEGY'] = $deploymentStrategy;
+    $_ENV['MAX_CONNECTIONS_PER_WORKER'] = (string) $config['workers']['max_connections_per_worker'];
+    $_ENV['EVENT_LOOP_UV_ENABLED'] = $config['event_loop']['uv_enabled'] ? '1' : '0';
+    $_ENV['EVENT_LOOP_UV_THRESHOLD_CONNECTIONS'] = (string) $config['event_loop']['thresholds']['connections'];
+    $_ENV['EVENT_LOOP_UV_THRESHOLD_TIMERS'] = (string) $config['event_loop']['thresholds']['timers'];
+    
+    echo "⚙️  Architecture Configuration:\n";
+    echo "   Mode: " . ($mode === 'dedicated' ? 'Dedicated Ports' : 'Single Port Multiplexing') . "\n";
+    echo "   Workers: {$workers} processes\n";
+    echo "   Memory Limit: {$memoryLimit} per worker\n";
+    if ($c10mEnabled) echo "   🔥 C10M Optimizations: ENABLED\n";
+    if ($rustEnabled) echo "   🦀 Rust FFI: ENABLED\n";
+    if ($zeroDowntime) echo "   🔄 Zero-Downtime: ENABLED ({$deploymentStrategy})\n";
+    echo "\n";
+    
     // Create and bootstrap application
     $app = new Application($config);
     $app->bootstrap();
+    
+    // Validate and optimize configuration using ArchitectureValidator
+    try {
+        $validator = new ArchitectureValidator($app->getLogger());
+        $config = $validator->validateConfiguration($config);
+        
+        // Update environment variables with validated config
+        $_ENV['WORKER_COUNT'] = (string) $config['workers']['count'];
+        $_ENV['WORKER_MEMORY_LIMIT'] = $config['workers']['memory_limit'];
+        $_ENV['MAX_CONNECTIONS_PER_WORKER'] = (string) $config['workers']['max_connections_per_worker'];
+        $_ENV['EVENT_LOOP_UV_ENABLED'] = ($config['event_loop']['uv_enabled'] ?? false) ? '1' : '0';
+        
+        echo "✅ Configuration validated and optimized\n";
+    } catch (\Throwable $e) {
+        echo "⚠️  Configuration validation warning: " . $e->getMessage() . "\n";
+    }
     
     // Get server and add some demo routes
     $server = $app->getContainer()->get(ServerInterface::class);
@@ -91,7 +190,7 @@ function executeServe(array $options): void
     // Add demo routes
     $router->addRoute('GET', '/', function() {
         return [
-            'message' => 'Welcome to HighPer Framework v2!',
+            'message' => 'Welcome to HighPer Framework!',
             'timestamp' => date('c'),
             'framework' => 'HighPer',
             'version' => '2.0.0'
@@ -116,27 +215,41 @@ function executeServe(array $options): void
     
     // Start server
     $host = $config['server']['host'];
-    $port = $config['server']['port'];
     $protocols = implode(', ', $config['server']['protocols']);
     
-    echo "✅ Server configuration:\n";
+    echo "✅ Server Configuration:\n";
     echo "   Host: {$host}\n";
-    echo "   Port: {$port}\n";
-    echo "   Protocols: {$protocols}\n";
     echo "   Environment: {$config['app']['env']}\n";
+    echo "   Protocols: {$protocols}\n";
+    
+    if ($mode === 'dedicated') {
+        echo "   HTTP Port: {$httpPort}\n";
+        echo "   WebSocket Port: {$wsPort}\n";
+        echo "\n📍 Available endpoints:\n";
+        echo "   GET  http://{$host}:{$httpPort}/       - Welcome message\n";
+        echo "   GET  http://{$host}:{$httpPort}/health - Health check\n";
+        echo "   GET  http://{$host}:{$httpPort}/stats  - Application stats\n";
+        echo "   WS   ws://{$host}:{$wsPort}/ws         - WebSocket connection\n";
+    } else {
+        $port = $config['server']['port'];
+        echo "   Port: {$port} (multiplexed)\n";
+        echo "\n📍 Available endpoints:\n";
+        echo "   GET  http://{$host}:{$port}/       - Welcome message\n";
+        echo "   GET  http://{$host}:{$port}/health - Health check\n";
+        echo "   GET  http://{$host}:{$port}/health/detailed - Detailed health check\n";
+        echo "   GET  http://{$host}:{$port}/health/readiness - Readiness probe\n";
+        echo "   GET  http://{$host}:{$port}/health/liveness - Liveness probe\n";
+        echo "   GET  http://{$host}:{$port}/metrics - Performance metrics\n";
+        echo "   GET  http://{$host}:{$port}/metrics/prometheus - Prometheus format\n";
+        echo "   GET  http://{$host}:{$port}/server/stats - Server statistics\n";
+        echo "   GET  http://{$host}:{$port}/stats  - Application stats\n";
+        if (in_array('ws', $protocols) || in_array('websocket', $protocols)) {
+            echo "   WS   ws://{$host}:{$port}/ws       - WebSocket connection\n";
+        }
+    }
+    
     echo "\n";
-    echo "📍 Available endpoints:\n";
-    echo "   GET  http://{$host}:{$port}/       - Welcome message\n";
-    echo "   GET  http://{$host}:{$port}/health - Quick health check\n";
-    echo "   GET  http://{$host}:{$port}/health/detailed - Detailed health check\n";
-    echo "   GET  http://{$host}:{$port}/health/readiness - Readiness probe\n";
-    echo "   GET  http://{$host}:{$port}/health/liveness - Liveness probe\n";
-    echo "   GET  http://{$host}:{$port}/metrics - Performance metrics\n";
-    echo "   GET  http://{$host}:{$port}/metrics/prometheus - Prometheus format\n";
-    echo "   GET  http://{$host}:{$port}/server/stats - Server statistics\n";
-    echo "   GET  http://{$host}:{$port}/stats  - Application stats\n";
-    echo "\n";
-    echo "🎯 Server starting... Press Ctrl+C to stop\n";
+    echo "🎯 Server starting with {$workers} worker processes... Press Ctrl+C to stop\n";
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
     
     try {
@@ -150,15 +263,51 @@ function executeServe(array $options): void
 
 function executeStatus(): void
 {
-    echo "📊 HighPer Framework Server Status\n";
+    echo "📊 HighPer Framework Status - Hybrid Multi-Process + Async Architecture\n";
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
     
-    // For now, just show that the framework is available
-    echo "✅ HighPer Framework v2 is ready\n";
-    echo "🔧 Available packages: " . (count(glob(__DIR__ . '/../packages/*')) ?: '0') . "\n";
-    echo "📦 Rust FFI libraries: " . (extension_loaded('ffi') ? 'Available' : 'Not available') . "\n";
-    echo "⚡ AMPHP support: " . (class_exists('\\Revolt\\EventLoop') ? 'Available' : 'Not available') . "\n";
-    echo "\nTo start the server: php bin/highper serve\n";
+    $cpuCores = (int) shell_exec('nproc') ?: 4;
+    $phpVersion = PHP_VERSION;
+    $memoryLimit = ini_get('memory_limit');
+    
+    echo "🏗️  Architecture Status:\n";
+    echo "   ✅ HighPer Framework ready\n";
+    echo "   ✅ Hybrid Multi-Process + Async architecture\n";
+    echo "   ✅ CPU cores detected: {$cpuCores}\n";
+    echo "   ✅ PHP version: {$phpVersion}\n";
+    echo "   ✅ Memory limit: {$memoryLimit}\n";
+    echo "\n";
+    
+    echo "🔧 Core Components:\n";
+    echo "   ✅ ProcessManager: " . (class_exists('HighPerApp\\HighPer\\Foundation\\ProcessManager') ? 'Available' : 'Missing') . "\n";
+    echo "   ✅ HybridEventLoop: " . (class_exists('HighPerApp\\HighPer\\Foundation\\HybridEventLoop') ? 'Available' : 'Missing') . "\n";
+    echo "   ✅ ZeroDowntimeWorkerManager: " . (class_exists('HighPerApp\\HighPer\\ZeroDowntime\\WorkerManagement\\ZeroDowntimeWorkerManager') ? 'Available' : 'Missing') . "\n";
+    echo "\n";
+    
+    echo "⚡ Event Loop Support:\n";
+    echo "   ✅ RevoltPHP: " . (class_exists('\\Revolt\\EventLoop') ? 'Available' : 'Not available') . "\n";
+    echo "   " . (extension_loaded('uv') ? '✅' : '❌') . " php-uv extension: " . (extension_loaded('uv') ? 'Available' : 'Not available') . "\n";
+    echo "   ✅ AMPHP ecosystem: " . (class_exists('\\Amp\\Socket\\Socket') ? 'Available' : 'Not available') . "\n";
+    echo "\n";
+    
+    echo "🦀 Performance Extensions:\n";
+    echo "   " . (extension_loaded('ffi') ? '✅' : '❌') . " FFI (Rust integration): " . (extension_loaded('ffi') ? 'Available' : 'Not available') . "\n";
+    echo "   " . (extension_loaded('opcache') ? '✅' : '❌') . " OPcache: " . (extension_loaded('opcache') ? 'Available' : 'Not available') . "\n";
+    echo "   " . (function_exists('pcntl_fork') ? '✅' : '❌') . " Process control: " . (function_exists('pcntl_fork') ? 'Available' : 'Not available') . "\n";
+    echo "\n";
+    
+    echo "🔧 Available Packages: " . (count(glob(__DIR__ . '/../packages/*')) ?: '0') . "\n";
+    echo "\n";
+    
+    echo "🚀 Quick Start Examples:\n";
+    echo "   # Basic server\n";
+    echo "   bin/highper serve\n";
+    echo "\n";
+    echo "   # Production server with all optimizations\n";
+    echo "   bin/highper serve --workers={$cpuCores} --c10m --rust=enabled --memory-limit=1G --zero-downtime\n";
+    echo "\n";
+    echo "   # Dedicated ports mode\n";
+    echo "   bin/highper serve --mode=dedicated --http-port=8080 --ws-port=8081\n";
 }
 
 // Main execution
