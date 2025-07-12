@@ -26,7 +26,7 @@
         "revolt/event-loop": "^1.0",
         "amphp/amp": "^3.0",
         "amphp/http-server": "^3.0",
-        "amphp/parallel": "^3.0",
+        "amphp/parallel": "^2.0",
         "vlucas/phpdotenv": "^5.0",
         "filp/whoops": "^2.0",
         "psr/container": "^2.0",
