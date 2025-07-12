@@ -6,7 +6,7 @@
 [![Reliability](https://img.shields.io/badge/Reliability-99.999%25-brightgreen.svg)](https://github.com/highperapp/highper-php)
 [![Tests](https://img.shields.io/badge/Tests-96.2%25-success.svg)](https://github.com/highperapp/highper-php)
 
-**Enterprise PHP framework designed for high-scale production applications with decades of operational experience.**
+**Enterprise PHP framework designed for high-scale production applications.**
 
 ## 🚀 Quick Start
 
@@ -77,6 +77,7 @@ HighPer Framework supports 18+ standalone packages that can be used independentl
 **Foundation Packages (Required)**:
 - `highperapp/container`: PSR-11 container optimized for C10M
 - `highperapp/router`: Ultra-fast router with O(1) lookups + Rust FFI
+- `highperapp/zero-downtime`: Zero-downtime deployment system
 
 
 **Optional Standalone Libraries**:
@@ -95,7 +96,7 @@ HighPer Framework supports 18+ standalone packages that can be used independentl
 - `highperapp/tracing`: Distributed tracing and observability
 - `highperapp/validator`: Data validation with Rust FFI
 - `highperapp/websockets`: WebSocket streaming with backpressure
-- `highperapp/zero-downtime`: Zero-downtime deployment system
+
 
 ## 🦀 Rust FFI Integration
 
@@ -225,10 +226,6 @@ tests/
 - **OS**: Linux (recommended), macOS, Windows
 
 ---
-
-**Ready for integration with blueprint and nano application templates.**
-
-*Built with decades of production experience in high-scale, high-concurrency applications.*
 
 ## 📝 License
 
