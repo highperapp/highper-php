@@ -42,6 +42,7 @@
         "symfony/var-dumper": "^6.0"
     },
     "suggest": {
+        "highperapp/tcp": "Enterprise TCP server and client with connection pooling",
         "highperapp/cache": "High-performance caching with Redis/Memcached",
         "highperapp/database": "Async database adapters for MySQL/PostgreSQL",
         "highperapp/websockets": "WebSocket streaming with backpressure",
@@ -56,7 +57,10 @@
     "autoload": {
         "psr-4": {
             "HighPerApp\\HighPer\\": "src/"
-        }
+        },
+        "files": [
+            "src/Support/helpers.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

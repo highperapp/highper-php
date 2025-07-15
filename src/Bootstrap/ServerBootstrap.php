@@ -160,14 +160,23 @@ class ServerBootstrap implements BootstrapInterface
             }
         }
 
-        // Load TCP server package if available
-        if (class_exists('\\EaseAppPHP\\HighPer\\Tcp\\TCPServer')) {
+        // Load TCP server and client package if available
+        if (class_exists('\\HighPerApp\\HighPer\\TCP\\TCPServiceProvider')) {
             try {
-                $tcpServer = new \HighPerApp\HighPer\Tcp\TCPServer();
-                $container->instance('tcp.server', $tcpServer);
-                $logger->debug('TCP server package loaded');
+                $tcpProvider = new \HighPerApp\HighPer\TCP\TCPServiceProvider(
+                    $container, 
+                    $app->getConfig()->get('tcp', [])
+                );
+                $tcpProvider->register();
+                $tcpProvider->boot();
+                
+                $container->instance('tcp.provider', $tcpProvider);
+                $logger->info('TCP server and client package loaded', [
+                    'server_available' => $tcpProvider->isServerAvailable(),
+                    'client_available' => $tcpProvider->isClientAvailable()
+                ]);
             } catch (\Throwable $e) {
-                $logger->warning('Failed to load TCP server', ['error' => $e->getMessage()]);
+                $logger->warning('Failed to load TCP package', ['error' => $e->getMessage()]);
             }
         }
 
