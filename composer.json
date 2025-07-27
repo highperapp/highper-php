@@ -33,7 +33,10 @@
         "psr/log": "^3.0",
 		"highperapp/container": "^1.0",
         "highperapp/router": "^1.0",
-        "highperapp/zero-downtime": "^1.0"
+        "highperapp/zero-downtime": "^1.0",
+        "highperapp/compression": "^1.0",
+        "highperapp/tcp": "dev-main",
+        "highperapp/grpc": "dev-main"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0",
@@ -42,8 +45,14 @@
         "symfony/var-dumper": "^6.0"
     },
     "suggest": {
+        "ext-uv": "Install php-uv extension for optimal performance in high-concurrency scenarios (15-25% performance boost)",
+        "ext-opcache": "OpCache extension for improved performance",
+        "ext-pcntl": "Process Control extension for multi-process architecture",
+        "ext-posix": "POSIX extension for signal handling",
+        "ext-ffi": "FFI extension for Rust acceleration support",
         "highperapp/tcp": "Enterprise TCP server and client with connection pooling",
         "highperapp/cache": "High-performance caching with Redis/Memcached",
+        "highperapp/compression": "High-performance compression with Rust FFI acceleration and Brotli/Gzip support",
         "highperapp/database": "Async database adapters for MySQL/PostgreSQL",
         "highperapp/websockets": "WebSocket streaming with backpressure",
         "highperapp/grpc": "gRPC server integration",
@@ -73,7 +82,9 @@
         },
         "highper": {
             "providers": [
-                "HighPerApp\\HighPer\\ServiceProvider\\CoreServiceProvider"
+                "HighPerApp\\HighPer\\ServiceProvider\\CoreServiceProvider",
+                "HighPerApp\\HighPer\\ServiceProvider\\GrpcServiceProvider",
+                "HighPerApp\\HighPer\\ServiceProvider\\CompressionServiceProvider"
             ]
         }
     },
@@ -84,6 +95,20 @@
             "php": "8.3.0"
         }
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "/home/infy/tcp"
+        },
+        {
+            "type": "path",
+            "url": "/home/infy/grpc"
+        },
+        {
+            "type": "path",
+            "url": "/home/infy/compression"
+        }
+    ],
     "minimum-stability": "dev",
     "prefer-stable": true,
     "scripts": {

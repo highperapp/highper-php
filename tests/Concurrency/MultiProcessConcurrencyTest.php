@@ -230,10 +230,60 @@ class MultiProcessConcurrencyTest extends TestCase
 
     public function testRaceConditionInProcessCreation(): void
     {
-        $this->markTestSkipped('Advanced race condition test - requires careful process management');
+        if (!function_exists('posix_kill')) {
+            $this->markTestSkipped('POSIX functions not available');
+        }
         
-        // This test would simulate race conditions during process creation
-        // Currently skipped to avoid complex inter-process synchronization
+        // Test concurrent process creation to detect race conditions
+        $processCount = 5;
+        $processes = [];
+        $startTime = microtime(true);
+        
+        // Create multiple processes simultaneously
+        for ($i = 0; $i < $processCount; $i++) {
+            $processes[] = $this->processManager->createProcess(function() use ($i) {
+                // Simulate concurrent resource access
+                $tempFile = sys_get_temp_dir() . '/race_test_' . $i . '.tmp';
+                file_put_contents($tempFile, "Process $i started at " . microtime(true));
+                usleep(100000); // 100ms delay
+                
+                // Check if file still exists (race condition test)
+                if (file_exists($tempFile)) {
+                    $content = file_get_contents($tempFile);
+                    unlink($tempFile);
+                    return $content;
+                }
+                
+                return "Process $i: File not found";
+            });
+        }
+        
+        // Wait for all processes to complete
+        $results = [];
+        foreach ($processes as $process) {
+            $results[] = $process->join();
+        }
+        
+        $endTime = microtime(true);
+        $totalTime = $endTime - $startTime;
+        
+        // Verify all processes completed successfully
+        $this->assertCount($processCount, $results);
+        
+        // Verify no race conditions occurred (all processes should have unique results)
+        $uniqueResults = array_unique($results);
+        $this->assertCount($processCount, $uniqueResults, 'Race condition detected: duplicate results found');
+        
+        // Verify reasonable execution time (should be concurrent, not sequential)
+        $this->assertLessThan($processCount * 0.5, $totalTime, 'Processes may not be running concurrently');
+        
+        // Clean up any remaining temp files
+        for ($i = 0; $i < $processCount; $i++) {
+            $tempFile = sys_get_temp_dir() . '/race_test_' . $i . '.tmp';
+            if (file_exists($tempFile)) {
+                unlink($tempFile);
+            }
+        }
     }
 
     public function testSignalHandlingConcurrency(): void

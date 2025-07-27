@@ -286,4 +286,107 @@ class TCPIntegrationTest extends TestCase
         }
     }
 
+    public function testProtocolRouterIntegration(): void
+    {
+        if (!class_exists('\\HighPerApp\\HighPer\\TCP\\TCPServiceProvider')) {
+            $this->markTestSkipped('TCP package not available');
+        }
+        
+        $app = $this->createApplication();
+        $container = $app->getContainer();
+        
+        // Test protocol router registration
+        if ($container->has('protocol.router')) {
+            $router = $container->get('protocol.router');
+            $this->assertNotNull($router);
+            
+            // Test supported protocols
+            $supportedProtocols = $router->getSupportedProtocols();
+            $this->assertIsArray($supportedProtocols);
+            $this->assertContains('tcp', $supportedProtocols);
+            
+            // Test routing statistics
+            $stats = $router->getStatistics();
+            $this->assertIsArray($stats);
+            $this->assertArrayHasKey('supported_protocols', $stats);
+            
+            echo "\nProtocol Router Integration: ✓\n";
+            echo "Supported Protocols: " . implode(', ', $supportedProtocols) . "\n";
+            echo "Routing Mode: " . ($stats['routing_mode'] ?? 'unknown') . "\n";
+        }
+    }
+
+    public function testProtocolHandlerIntegration(): void
+    {
+        if (!class_exists('\\HighPerApp\\HighPer\\TCP\\TCPServiceProvider')) {
+            $this->markTestSkipped('TCP package not available');
+        }
+        
+        $app = $this->createApplication();
+        $container = $app->getContainer();
+        
+        // Test TCP protocol handler registration
+        if ($container->has('tcp.protocol.handler')) {
+            $handler = $container->get('tcp.protocol.handler');
+            $this->assertNotNull($handler);
+            
+            // Test protocol handling capabilities
+            $this->assertTrue($handler->canHandle('tcp'));
+            $this->assertTrue($handler->canHandle('tcp_tls'));
+            $this->assertFalse($handler->canHandle('http'));
+            
+            // Test handler statistics
+            $stats = $handler->getStatistics();
+            $this->assertIsArray($stats);
+            $this->assertArrayHasKey('supported_protocols', $stats);
+            
+            echo "\nProtocol Handler Integration: ✓\n";
+            echo "Handler Name: " . $handler->getName() . "\n";
+            echo "Can Handle TCP: ✓\n";
+            echo "Can Handle TCP TLS: ✓\n";
+        }
+    }
+
+    public function testMultiProtocolConfigurationIntegration(): void
+    {
+        $config = [
+            'server' => [
+                'mode' => 'security_segregated',
+                'protocol_segregation' => [
+                    'enabled' => true,
+                    'non_secure' => [
+                        'protocols' => ['http', 'ws', 'tcp'],
+                        'port' => 8080
+                    ],
+                    'secure' => [
+                        'protocols' => ['https', 'wss', 'tcp_tls'],
+                        'port' => 8443
+                    ]
+                ]
+            ]
+        ];
+        
+        if (!class_exists('\\HighPerApp\\HighPer\\TCP\\TCPServiceProvider')) {
+            $this->markTestSkipped('TCP package not available');
+        }
+        
+        $app = $this->createApplication($config);
+        $container = $app->getContainer();
+        
+        if ($container->has('server.config.manager')) {
+            $configManager = $container->get('server.config.manager');
+            
+            $this->assertEquals('security_segregated', $configManager->getMode());
+            $this->assertTrue($configManager->isProtocolSegregationEnabled());
+            $this->assertEquals(8080, $configManager->getPortForProtocol('tcp', false));
+            $this->assertEquals(8443, $configManager->getPortForProtocol('tcp', true));
+            
+            echo "\nMulti-Protocol Configuration Integration: ✓\n";
+            echo "Server Mode: " . $configManager->getMode() . "\n";
+            echo "Protocol Segregation: " . ($configManager->isProtocolSegregationEnabled() ? 'Enabled' : 'Disabled') . "\n";
+            echo "TCP Port: " . $configManager->getPortForProtocol('tcp', false) . "\n";
+            echo "TCP TLS Port: " . $configManager->getPortForProtocol('tcp', true) . "\n";
+        }
+    }
+
 }

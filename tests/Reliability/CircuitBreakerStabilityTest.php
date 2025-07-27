@@ -6,6 +6,7 @@ namespace HighPerApp\HighPer\Tests\Reliability;
 
 use HighPerApp\HighPer\Resilience\CircuitBreaker;
 use HighPerApp\HighPer\Tests\TestCase;
+use HighPerApp\HighPer\Bootstrap\ServerBootstrap;
 
 class CircuitBreakerStabilityTest extends TestCase
 {
@@ -361,5 +362,188 @@ class CircuitBreakerStabilityTest extends TestCase
         $this->assertGreaterThan(20, $highQuality); // Should have some high quality responses
         $this->assertGreaterThan(30, $degraded); // Should provide degraded responses when possible
         $this->assertLessThan(20, $noResponse); // Should minimize complete failures
+    }
+
+    public function testTCPProtocolCircuitBreakerIntegration(): void
+    {
+        if (!class_exists('\\HighPerApp\\HighPer\\TCP\\TCPServiceProvider')) {
+            $this->markTestSkipped('TCP package not available');
+        }
+        
+        $app = $this->createApplication([
+            'server' => [
+                'dedicated_ports' => [
+                    'tcp' => [
+                        'circuit_breaker' => [
+                            'enabled' => true,
+                            'failure_threshold' => 3,
+                            'recovery_timeout' => 5,
+                            'half_open_max_calls' => 2,
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+        
+        $container = $app->getContainer();
+        
+        if ($container->has('tcp.client.pool')) {
+            $tcpClientPool = $container->get('tcp.client.pool');
+            
+            // Test circuit breaker behavior with TCP connections
+            $successCount = 0;
+            $failureCount = 0;
+            $circuitOpenCount = 0;
+            
+            // Simulate TCP connection failures
+            for ($i = 0; $i < 20; $i++) {
+                try {
+                    // Simulate connection attempt
+                    $connection = $tcpClientPool->getConnection('test_pool', [
+                        'host' => '127.0.0.1',
+                        'port' => 9999, // Non-existent port to trigger failures
+                        'timeout' => 1
+                    ]);
+                    
+                    if ($connection) {
+                        $successCount++;
+                    }
+                } catch (\Exception $e) {
+                    if (strpos($e->getMessage(), 'Circuit breaker is open') !== false) {
+                        $circuitOpenCount++;
+                    } else {
+                        $failureCount++;
+                    }
+                }
+                
+                // Small delay between attempts
+                usleep(100000); // 100ms
+            }
+            
+            // Verify circuit breaker engaged
+            $this->assertGreaterThan(0, $circuitOpenCount, 'Circuit breaker should have engaged');
+            $this->assertLessThan(20, $failureCount, 'Circuit breaker should have prevented some failures');
+            
+            // Test recovery behavior
+            sleep(6); // Wait for recovery timeout
+            
+            // Attempt connection again to test half-open state
+            $recoveryAttempts = 0;
+            for ($i = 0; $i < 3; $i++) {
+                try {
+                    $connection = $tcpClientPool->getConnection('test_pool', [
+                        'host' => '127.0.0.1',
+                        'port' => 9999,
+                        'timeout' => 1
+                    ]);
+                    $recoveryAttempts++;
+                } catch (\Exception $e) {
+                    // Expected - connection will still fail but circuit breaker should allow limited attempts
+                }
+            }
+            
+            // Verify circuit breaker allowed recovery attempts
+            $this->assertGreaterThan(0, $recoveryAttempts, 'Circuit breaker should allow recovery attempts');
+            
+            echo "\nTCP Protocol Circuit Breaker Integration: ✓\n";
+            echo "Success Count: $successCount\n";
+            echo "Failure Count: $failureCount\n";
+            echo "Circuit Open Count: $circuitOpenCount\n";
+            echo "Recovery Attempts: $recoveryAttempts\n";
+        }
+    }
+
+    public function testProtocolSegregationReliability(): void
+    {
+        $app = $this->createApplication([
+            'server' => [
+                'mode' => 'security_segregated',
+                'protocol_segregation' => [
+                    'enabled' => true,
+                    'non_secure' => [
+                        'protocols' => ['http', 'tcp'],
+                        'port' => 8080
+                    ],
+                    'secure' => [
+                        'protocols' => ['https', 'tcp_tls'],
+                        'port' => 8443
+                    ]
+                ]
+            ]
+        ]);
+        
+        $container = $app->getContainer();
+        
+        if ($container->has('protocol.router')) {
+            $router = $container->get('protocol.router');
+            
+            // Test protocol isolation under failure conditions
+            $nonSecureFailures = 0;
+            $secureFailures = 0;
+            
+            // Simulate failures in non-secure protocols
+            for ($i = 0; $i < 10; $i++) {
+                try {
+                    // Simulate non-secure protocol failure
+                    $mockConnection = $this->createMockConnection('tcp', 8080, false);
+                    $handler = $router->route($mockConnection);
+                    
+                    if (!$handler) {
+                        $nonSecureFailures++;
+                    }
+                } catch (\Exception $e) {
+                    $nonSecureFailures++;
+                }
+            }
+            
+            // Simulate secure protocol requests (should not be affected)
+            for ($i = 0; $i < 10; $i++) {
+                try {
+                    $mockConnection = $this->createMockConnection('tcp_tls', 8443, true);
+                    $handler = $router->route($mockConnection);
+                    
+                    if (!$handler) {
+                        $secureFailures++;
+                    }
+                } catch (\Exception $e) {
+                    $secureFailures++;
+                }
+            }
+            
+            // Verify protocol isolation
+            $this->assertLessThan(5, $secureFailures, 'Secure protocols should be isolated from non-secure failures');
+            
+            echo "\nProtocol Segregation Reliability: ✓\n";
+            echo "Non-secure Failures: $nonSecureFailures\n";
+            echo "Secure Failures: $secureFailures\n";
+            echo "Isolation Effectiveness: " . (($nonSecureFailures > $secureFailures) ? '✓' : '✗') . "\n";
+        }
+    }
+    
+    private function createMockConnection(string $protocol, int $port, bool $isSecure): object
+    {
+        return new class($protocol, $port, $isSecure) {
+            public function __construct(
+                private string $protocol,
+                private int $port,
+                private bool $isSecure
+            ) {}
+            
+            public function getId(): string { return 'mock_' . uniqid(); }
+            public function getLocalPort(): int { return $this->port; }
+            public function getRemoteAddress(): string { return '127.0.0.1'; }
+            public function getTransport(): string { return $this->isSecure ? 'tcp_tls' : 'tcp'; }
+            public function peek(int $length, int $timeout = 5000): string { 
+                return $this->isSecure ? "\x16\x03\x01" : "GET / HTTP/1.1\r\n"; 
+            }
+            public function read(): string { return ''; }
+            public function write(string $data): int { return strlen($data); }
+            public function close(): void {}
+            public function isOpen(): bool { return true; }
+            public function isTlsEnabled(): bool { return $this->isSecure; }
+            public function isQuic(): bool { return false; }
+            public function readStream(): string { return ''; }
+            public function writeStream(string $data): int { return strlen($data); }
+        };
     }
 }
